@@ -12,6 +12,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
     window = SDL_CreateWindow("Hello, Triangle!", 960, 540, SDL_WINDOW_RESIZABLE);
 
     device = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_DXIL | SDL_GPU_SHADERFORMAT_SPIRV, true, NULL);
+    SDL_ClaimWindowForGPUDevice(device, window);
 
     return SDL_APP_CONTINUE;
 }
