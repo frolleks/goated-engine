@@ -5,33 +5,12 @@
 #include <math.h>
 
 #include "normalize_coords.h"
+#include "object.h"
 #include "penger.h"
 
-static SDL_Window *window = NULL;
-static SDL_Renderer *renderer = NULL;
-static uint64_t previous_counter = 0;
-
-SDL_FPoint project_to_2d(float x, float y, float z) {
-    return (SDL_FPoint){x / z, y / z};
-}
-
-struct VerticesStruct rotate_xz(float x, float y, float z, float angle) {
-    const float c = cosf(angle);
-    const float s = sinf(angle);
-
-    return (struct VerticesStruct){
-        (x * c) - (z * s),
-        y,
-        (x * s) + (z * c),
-    };
-}
-
-static bool render_triangle_outline(SDL_Renderer *renderer, SDL_FPoint a,
-                                    SDL_FPoint b, SDL_FPoint c) {
-    return SDL_RenderLine(renderer, a.x, a.y, b.x, b.y) &&
-           SDL_RenderLine(renderer, b.x, b.y, c.x, c.y) &&
-           SDL_RenderLine(renderer, c.x, c.y, a.x, a.y);
-}
+SDL_Window *window = NULL;
+SDL_Renderer *renderer = NULL;
+uint64_t previous_counter = 0;
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
     (void)appstate;
