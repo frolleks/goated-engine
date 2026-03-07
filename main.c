@@ -4,8 +4,11 @@
 #include <SDL3/SDL_main.h>
 #include <math.h>
 
+#include "math3d.h"
+#include "mesh.h"
 #include "normalize_coords.h"
-#include "object.h"
+#include "renderer.h"
+
 #include "penger.h"
 
 SDL_Window *window = NULL;
@@ -85,9 +88,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     }
 
     for (int i = 0; i < (int)SDL_arraysize(object_vertices); ++i) {
-        struct VerticesStruct rotated_coords =
-            rotate_xz(object_vertices[i].x, object_vertices[i].y,
-                      object_vertices[i].z, angle);
+        Vertex rotated_coords = rotate_y(object_vertices[i], angle);
 
         rotated_coords.z += camera_distance;
 
@@ -109,8 +110,8 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
         // }
     }
 
-    for (int i = 0; i < (int)SDL_arraysize(object_faces); ++i) {
-        const struct Triangle triangle = object_faces[i];
+    for (int i = 0; i < (int)SDL_arraysize(object_triangles); ++i) {
+        const Triangle triangle = object_triangles[i];
         const SDL_FPoint a = projected_vertices[triangle.v1];
         const SDL_FPoint b = projected_vertices[triangle.v2];
         const SDL_FPoint c = projected_vertices[triangle.v3];

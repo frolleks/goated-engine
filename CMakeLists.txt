@@ -10,7 +10,9 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>")
 add_subdirectory(third_party/SDL EXCLUDE_FROM_ALL)
 
 # Create your game executable target as usual
-add_executable(hello main.c normalize_coords.c object.c)
+add_executable(hello main.c normalize_coords.c renderer.c math3d.c)
 
 # Link to the actual SDL3 library.
 target_link_libraries(hello PRIVATE SDL3::SDL3)
+
+target_include_directories(hello PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third_party)

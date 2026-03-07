@@ -1,6 +1,6 @@
-#include "object.h"
+#include "mesh.h"
 
-static struct VerticesStruct object_vertices[] = {
+static const Vertex object_vertices[] = {
     {-0.086914f, 0.277547f, 0.400041f},   {-0.069555f, 0.329698f, 0.376422f},
     {-0.125429f, 0.305056f, 0.175577f},   {-0.087431f, 0.359323f, 0.182228f},
     {0.086914f, 0.277547f, 0.400041f},    {0.069555f, 0.329698f, 0.376422f},
@@ -165,7 +165,7 @@ static struct VerticesStruct object_vertices[] = {
     {0.322171f, -0.510414f, 0.081591f},   {0.322171f, -0.244774f, 0.081591f},
 };
 
-static struct Triangle object_faces[] = {
+static const Triangle object_triangles[] = {
     {22, 2, 10},     {21, 1, 24},     {7, 23, 14},     {2, 25, 8},
     {0, 21, 24},     {1, 23, 18},     {3, 23, 11},     {2, 19, 10},
     {19, 7, 12},     {6, 19, 12},     {22, 0, 9},      {20, 5, 15},
@@ -322,4 +322,11 @@ static struct Triangle object_faces[] = {
     {316, 321, 315}, {315, 321, 317}, {307, 299, 317}, {316, 298, 307},
     {300, 306, 322}, {322, 313, 304}, {322, 316, 302}, {298, 316, 322},
     {305, 314, 323}, {323, 308, 301}, {323, 317, 299}, {303, 317, 323},
+};
+
+const Mesh object_mesh = {
+    .vertices = object_vertices,
+    .vertex_count = sizeof(object_vertices) / sizeof(object_vertices[0]),
+    .triangles = object_triangles,
+    .triangle_count = sizeof(object_triangles) / sizeof(object_triangles[0]),
 };

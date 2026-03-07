@@ -1,20 +1,7 @@
-#include <SDL3/SDL.h>
-
-#include "object.h"
+#include "renderer.h"
 
 SDL_FPoint project_to_2d(float x, float y, float z) {
     return (SDL_FPoint){x / z, y / z};
-}
-
-struct VerticesStruct rotate_xz(float x, float y, float z, float angle) {
-    const float c = cosf(angle);
-    const float s = sinf(angle);
-
-    return (struct VerticesStruct){
-        (x * c) - (z * s),
-        y,
-        (x * s) + (z * c),
-    };
 }
 
 bool render_triangle_outline(SDL_Renderer *renderer, SDL_FPoint a, SDL_FPoint b,
