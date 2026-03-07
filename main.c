@@ -5,34 +5,11 @@
 #include <math.h>
 
 #include "normalize_coords.h"
+#include "penger.h"
 
 static SDL_Window *window = NULL;
 static SDL_Renderer *renderer = NULL;
 static uint64_t previous_counter = 0;
-
-struct VerticesStruct {
-    float x;
-    float y;
-    float z;
-};
-
-struct Edge {
-    int from;
-    int to;
-};
-
-static struct VerticesStruct vertices[] = {
-    {0.25f, 0.25f, 0.25f},    {-0.25f, 0.25f, 0.25f},
-    {-0.25f, -0.25f, 0.25f},  {0.25f, -0.25f, 0.25f},
-
-    {0.25f, 0.25f, -0.25f},   {-0.25f, 0.25f, -0.25f},
-    {-0.25f, -0.25f, -0.25f}, {0.25f, -0.25f, -0.25f},
-};
-
-static struct Edge edges[] = {
-    {0, 1}, {1, 2}, {2, 3}, {3, 0}, {4, 5}, {5, 6},
-    {6, 7}, {7, 4}, {0, 4}, {1, 5}, {2, 6}, {3, 7},
-};
 
 SDL_FPoint project_to_2d(float x, float y, float z) {
     return (SDL_FPoint){x / z, y / z};
@@ -80,7 +57,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
         (float)(now - previous_counter) / (float)SDL_GetPerformanceFrequency();
     int width = 0;
     int height = 0;
-    SDL_FPoint projected_vertices[SDL_arraysize(vertices)];
+    SDL_FPoint projected_vertices[SDL_arraysize(object_vertices)];
     const float rotation_speed = 2.0f;
     const float camera_distance = 1.5f;
     const float point_size = 10.0f;
@@ -121,9 +98,10 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
         return SDL_APP_FAILURE;
     }
 
-    for (int i = 0; i < (int)SDL_arraysize(vertices); ++i) {
+    for (int i = 0; i < (int)SDL_arraysize(object_vertices); ++i) {
         struct VerticesStruct rotated_coords =
-            rotate_xz(vertices[i].x, vertices[i].y, vertices[i].z, angle);
+            rotate_xz(object_vertices[i].x, object_vertices[i].y,
+                      object_vertices[i].z, angle);
 
         rotated_coords.z += camera_distance;
 
@@ -139,16 +117,16 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
             point_size,
         };
 
-        if (!SDL_RenderFillRect(renderer, &rect)) {
-            SDL_Log("Couldn't draw the rectangle: %s", SDL_GetError());
-            return SDL_APP_FAILURE;
-        }
+        // if (!SDL_RenderFillRect(renderer, &rect)) {
+        //     SDL_Log("Couldn't draw the rectangle: %s", SDL_GetError());
+        //     return SDL_APP_FAILURE;
+        // }
     }
 
-    for (int i = 0; i < (int)SDL_arraysize(edges); ++i) {
-        const struct Edge edge = edges[i];
-        const SDL_FPoint a = projected_vertices[edge.from];
-        const SDL_FPoint b = projected_vertices[edge.to];
+    for (int i = 0; i < (int)SDL_arraysize(object_faces); ++i) {
+        const struct Triangle triangle = object_faces[i];
+        const SDL_FPoint a = projected_vertices[triangle.v1];
+        const SDL_FPoint b = projected_vertices[triangle.v2];
 
         if (!SDL_RenderLine(renderer, a.x, a.y, b.x, b.y)) {
             SDL_Log("Couldn't draw the line: %s", SDL_GetError());
