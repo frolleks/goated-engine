@@ -61,9 +61,8 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
         return SDL_APP_FAILURE;
     }
 
-    if (!SDL_CreateWindowAndRenderer("Hello, Triangle!", 960, 540,
-                                     SDL_WINDOW_RESIZABLE, &window,
-                                     &renderer)) {
+    if (!SDL_CreateWindowAndRenderer("cube", 960, 540, SDL_WINDOW_RESIZABLE,
+                                     &window, &renderer)) {
         SDL_Log("Couldn't create the window and renderer: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
