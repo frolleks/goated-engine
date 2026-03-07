@@ -26,6 +26,13 @@ struct VerticesStruct rotate_xz(float x, float y, float z, float angle) {
     };
 }
 
+static bool render_triangle_outline(SDL_Renderer *renderer, SDL_FPoint a,
+                                    SDL_FPoint b, SDL_FPoint c) {
+    return SDL_RenderLine(renderer, a.x, a.y, b.x, b.y) &&
+           SDL_RenderLine(renderer, b.x, b.y, c.x, c.y) &&
+           SDL_RenderLine(renderer, c.x, c.y, a.x, a.y);
+}
+
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
     (void)appstate;
     (void)argc;
@@ -127,9 +134,10 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
         const struct Triangle triangle = object_faces[i];
         const SDL_FPoint a = projected_vertices[triangle.v1];
         const SDL_FPoint b = projected_vertices[triangle.v2];
+        const SDL_FPoint c = projected_vertices[triangle.v3];
 
-        if (!SDL_RenderLine(renderer, a.x, a.y, b.x, b.y)) {
-            SDL_Log("Couldn't draw the line: %s", SDL_GetError());
+        if (!render_triangle_outline(renderer, a, b, c)) {
+            SDL_Log("Couldn't draw the triangle outline: %s", SDL_GetError());
             return SDL_APP_FAILURE;
         }
     }
