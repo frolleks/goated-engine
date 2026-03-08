@@ -10,8 +10,6 @@
 #include "renderer.h"
 #include "texture_loader.h"
 
-#include "penger.h"
-
 SDL_Window *window = NULL;
 SDL_Renderer *renderer = NULL;
 uint64_t previous_counter = 0;
@@ -72,7 +70,7 @@ static bool load_mesh_textures(Mesh *mesh) {
         return false;
     }
 
-    if (!texture_image_make_checker(&g_textures[0], 0xFFFF00FFu, 0xFF101010u)) {
+    if (!texture_image_make_checker(&g_textures[0], 0xFF141414u, 0xFF0C0C0Cu)) {
         return false;
     }
 
