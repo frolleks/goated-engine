@@ -11,6 +11,7 @@
 
 void mesh_free(Mesh *mesh);
 bool fastobj_index_valid(const fastObjMesh *src, unsigned int p);
+bool fastobj_texcoord_index_valid(const fastObjMesh *src, unsigned int t);
 bool convert_fastobj_to_mesh(const fastObjMesh *src, Mesh *dst);
 
 #endif
