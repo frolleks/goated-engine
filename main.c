@@ -4,6 +4,7 @@
 #include <SDL3/SDL_main.h>
 
 #include "mesh.h"
+#include "obj_to_mesh.h"
 #include "renderer.h"
 
 #include "penger.h"
@@ -11,6 +12,8 @@
 SDL_Window *window = NULL;
 SDL_Renderer *renderer = NULL;
 uint64_t previous_counter = 0;
+static Mesh g_mesh = {0};
+static SDL_FPoint *g_projected_vertices = NULL;
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
     (void)appstate;
@@ -32,6 +35,33 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
 
     previous_counter = SDL_GetPerformanceCounter();
 
+    fastObjMesh *obj_mesh = fast_obj_read("assets/file.obj");
+
+    if (!obj_mesh) {
+        SDL_Log("Failed to load OBJ");
+        return SDL_APP_FAILURE;
+    }
+
+    if (!convert_fastobj_to_mesh(obj_mesh, &g_mesh)) {
+        SDL_Log("Failed to convert OBJ to Mesh");
+        fast_obj_destroy(obj_mesh);
+        return SDL_APP_FAILURE;
+    }
+
+    fast_obj_destroy(obj_mesh);
+
+    g_projected_vertices =
+        SDL_malloc(sizeof(*g_projected_vertices) * g_mesh.vertex_count);
+
+    if (!g_projected_vertices) {
+        SDL_Log("Failed to allocate projected vertex buffer");
+        mesh_free(&g_mesh);
+        return SDL_APP_FAILURE;
+    }
+
+    SDL_Log("vertices: %zu", g_mesh.vertex_count);
+    SDL_Log("triangles: %zu", g_mesh.triangle_count);
+
     return SDL_APP_CONTINUE;
 }
 
@@ -46,17 +76,15 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     int height = 0;
 
     const float rotation_speed = 2.0f;
-    const float camera_distance = 1.5f;
+    const float camera_distance = 20.0f;
     const float point_size = 10.0f;
 
     angle += rotation_speed * dt;
     (void)appstate;
     previous_counter = now;
 
-    const Mesh *mesh = &penger_mesh;
-
-    if (!draw_mesh_wireframe(renderer, mesh, angle, camera_distance, width,
-                             height)) {
+    if (!draw_mesh_wireframe(renderer, &g_mesh, g_projected_vertices, angle,
+                             camera_distance)) {
         SDL_Log("Couldn't draw the wireframe: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
@@ -78,6 +106,11 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
 void SDL_AppQuit(void *appstate, SDL_AppResult result) {
     (void)appstate;
     (void)result;
+
+    mesh_free(&g_mesh);
+
+    SDL_free(g_projected_vertices);
+    g_projected_vertices = NULL;
 
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);

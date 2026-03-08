@@ -11,7 +11,8 @@
 bool render_triangle_outline(SDL_Renderer *renderer, SDL_FPoint a, SDL_FPoint b,
                              SDL_FPoint c);
 SDL_FPoint project_to_2d(float x, float y, float z);
-bool draw_mesh_wireframe(SDL_Renderer *renderer, const Mesh *mesh, float angle,
-                         float camera_distance, int width, int height);
+bool draw_mesh_wireframe(SDL_Renderer *renderer, const Mesh *mesh,
+                         SDL_FPoint *projected_vertices, float angle,
+                         float camera_distance);
 
 #endif

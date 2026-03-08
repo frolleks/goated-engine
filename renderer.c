@@ -11,46 +11,34 @@ bool render_triangle_outline(SDL_Renderer *renderer, SDL_FPoint a, SDL_FPoint b,
            SDL_RenderLine(renderer, c.x, c.y, a.x, a.y);
 }
 
-bool draw_mesh_wireframe(SDL_Renderer *renderer, const Mesh *mesh, float angle,
-                         float camera_distance, int width, int height) {
-    SDL_FPoint *projected_vertices =
-        SDL_malloc(sizeof(*projected_vertices) * mesh->vertex_count);
-    if (!projected_vertices) {
-        SDL_Log("Out of memory");
-        return SDL_APP_FAILURE;
+bool draw_mesh_wireframe(SDL_Renderer *renderer, const Mesh *mesh,
+                         SDL_FPoint *projected_vertices, float angle,
+                         float camera_distance) {
+    int width = 0;
+    int height = 0;
+
+    if (!renderer || !mesh || !projected_vertices) {
+        return false;
     }
 
     if (!SDL_GetRenderOutputSize(renderer, &width, &height)) {
         SDL_Log("Couldn't get renderer size: %s", SDL_GetError());
-        return SDL_APP_FAILURE;
+        return false;
     }
-
-    // /* Vertices are in centered normalized space: (0, 0) is screen center. */
-    // triangle[0] = (SDL_Vertex){normalize_coords(0.0f, 0.0f, width, height),
-    // green, {0.0f, 0.0f}}; triangle[1] = (SDL_Vertex){normalize_coords(0.25f,
-    // -0.5f, width, height), green, {0.0f, 0.0f}}; triangle[2] =
-    // (SDL_Vertex){normalize_coords(-0.25f, -0.5f, width, height), green,
-    // {0.0f, 0.0f}};
 
     if (!SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE)) {
         SDL_Log("Couldn't set the clear color: %s", SDL_GetError());
-        return SDL_APP_FAILURE;
+        return false;
     }
 
     if (!SDL_RenderClear(renderer)) {
         SDL_Log("Couldn't clear the frame: %s", SDL_GetError());
-        return SDL_APP_FAILURE;
+        return false;
     }
 
-    // if (!SDL_RenderGeometry(renderer, NULL, triangle, 3, NULL, 0))
-    // {
-    //     SDL_Log("Couldn't draw the triangle: %s", SDL_GetError());
-    //     return SDL_APP_FAILURE;
-    // }
-
     if (!SDL_SetRenderDrawColor(renderer, 0, 255, 0, SDL_ALPHA_OPAQUE)) {
-        SDL_Log("Couldn't set the clear color: %s", SDL_GetError());
-        return SDL_APP_FAILURE;
+        SDL_Log("Couldn't set draw color: %s", SDL_GetError());
+        return false;
     }
 
     for (size_t i = 0; i < mesh->vertex_count; ++i) {
@@ -64,11 +52,6 @@ bool draw_mesh_wireframe(SDL_Renderer *renderer, const Mesh *mesh, float angle,
 
         SDL_FPoint p = project_to_2d(rotated.x, rotated.y, rotated.z);
         projected_vertices[i] = normalize_coords(p.x, p.y, width, height);
-
-        // if (!SDL_RenderFillRect(renderer, &rect)) {
-        //     SDL_Log("Couldn't draw the rectangle: %s", SDL_GetError());
-        //     return SDL_APP_FAILURE;
-        // }
     }
 
     for (size_t i = 0; i < mesh->triangle_count; ++i) {
@@ -79,18 +62,15 @@ bool draw_mesh_wireframe(SDL_Renderer *renderer, const Mesh *mesh, float angle,
         SDL_FPoint c = projected_vertices[t.v3];
 
         if (!render_triangle_outline(renderer, a, b, c)) {
-            SDL_free(projected_vertices);
-            SDL_Log("Couldn't draw the triangle outline: %s", SDL_GetError());
-            return SDL_APP_FAILURE;
+            SDL_Log("Couldn't draw triangle outline: %s", SDL_GetError());
+            return false;
         }
     }
 
     if (!SDL_RenderPresent(renderer)) {
         SDL_Log("Couldn't present the frame: %s", SDL_GetError());
-        return SDL_APP_FAILURE;
+        return false;
     }
-
-    SDL_free(projected_vertices);
 
     return true;
 }

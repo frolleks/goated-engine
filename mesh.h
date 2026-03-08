@@ -17,10 +17,10 @@ typedef struct {
 } Triangle;
 
 typedef struct {
-    const Vertex *vertices;
+    Vertex *vertices;
     size_t vertex_count;
 
-    const Triangle *triangles;
+    Triangle *triangles;
     size_t triangle_count;
 } Mesh;
 
