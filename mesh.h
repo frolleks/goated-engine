@@ -17,11 +17,19 @@ typedef struct {
 } Triangle;
 
 typedef struct {
+    uint32_t v1;
+    uint32_t v2;
+} Edge;
+
+typedef struct {
     Vertex *vertices;
     size_t vertex_count;
 
     Triangle *triangles;
     size_t triangle_count;
+
+    Edge *edges;
+    size_t edge_count;
 } Mesh;
 
 #endif

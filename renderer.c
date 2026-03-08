@@ -1,5 +1,9 @@
 #include "renderer.h"
 
+static bool projected_point_is_valid(SDL_FPoint point) {
+    return !SDL_isnanf(point.x) && !SDL_isnanf(point.y);
+}
+
 SDL_FPoint project_to_2d(float x, float y, float z) {
     return (SDL_FPoint){x / z, y / z};
 }
@@ -36,7 +40,7 @@ bool draw_mesh_wireframe(SDL_Renderer *renderer, const Mesh *mesh,
         return false;
     }
 
-    if (!SDL_SetRenderDrawColor(renderer, 0, 255, 0, SDL_ALPHA_OPAQUE)) {
+    if (!SDL_SetRenderDrawColor(renderer, 0, 255, 0, 200)) {
         SDL_Log("Couldn't set draw color: %s", SDL_GetError());
         return false;
     }
@@ -46,7 +50,7 @@ bool draw_mesh_wireframe(SDL_Renderer *renderer, const Mesh *mesh,
         rotated.z += camera_distance;
 
         if (rotated.z <= 0.01f) {
-            projected_vertices[i] = (SDL_FPoint){0.0f, 0.0f};
+            projected_vertices[i] = (SDL_FPoint){NAN, NAN};
             continue;
         }
 
@@ -54,16 +58,38 @@ bool draw_mesh_wireframe(SDL_Renderer *renderer, const Mesh *mesh,
         projected_vertices[i] = normalize_coords(p.x, p.y, width, height);
     }
 
-    for (size_t i = 0; i < mesh->triangle_count; ++i) {
-        Triangle t = mesh->triangles[i];
+    if (mesh->edges && mesh->edge_count > 0) {
+        for (size_t i = 0; i < mesh->edge_count; ++i) {
+            const Edge edge = mesh->edges[i];
+            const SDL_FPoint a = projected_vertices[edge.v1];
+            const SDL_FPoint b = projected_vertices[edge.v2];
 
-        SDL_FPoint a = projected_vertices[t.v1];
-        SDL_FPoint b = projected_vertices[t.v2];
-        SDL_FPoint c = projected_vertices[t.v3];
+            if (!projected_point_is_valid(a) || !projected_point_is_valid(b)) {
+                continue;
+            }
 
-        if (!render_triangle_outline(renderer, a, b, c)) {
-            SDL_Log("Couldn't draw triangle outline: %s", SDL_GetError());
-            return false;
+            if (!SDL_RenderLine(renderer, a.x, a.y, b.x, b.y)) {
+                SDL_Log("Couldn't draw wireframe edge: %s", SDL_GetError());
+                return false;
+            }
+        }
+    } else {
+        for (size_t i = 0; i < mesh->triangle_count; ++i) {
+            const Triangle t = mesh->triangles[i];
+
+            const SDL_FPoint a = projected_vertices[t.v1];
+            const SDL_FPoint b = projected_vertices[t.v2];
+            const SDL_FPoint c = projected_vertices[t.v3];
+
+            if (!projected_point_is_valid(a) || !projected_point_is_valid(b) ||
+                !projected_point_is_valid(c)) {
+                continue;
+            }
+
+            if (!render_triangle_outline(renderer, a, b, c)) {
+                SDL_Log("Couldn't draw triangle outline: %s", SDL_GetError());
+                return false;
+            }
         }
     }
 

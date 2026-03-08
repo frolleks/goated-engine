@@ -1,16 +1,98 @@
 #include "obj_to_mesh.h"
 
+static Edge make_edge(uint32_t a, uint32_t b) {
+    if (a < b) {
+        return (Edge){a, b};
+    }
+
+    return (Edge){b, a};
+}
+
+static int compare_edges(const void *lhs, const void *rhs) {
+    const Edge *a = (const Edge *)lhs;
+    const Edge *b = (const Edge *)rhs;
+
+    if (a->v1 < b->v1) {
+        return -1;
+    }
+
+    if (a->v1 > b->v1) {
+        return 1;
+    }
+
+    if (a->v2 < b->v2) {
+        return -1;
+    }
+
+    if (a->v2 > b->v2) {
+        return 1;
+    }
+
+    return 0;
+}
+
+static bool build_wireframe_edges(Mesh *mesh) {
+    if (!mesh || !mesh->triangles || mesh->triangle_count == 0) {
+        return true;
+    }
+
+    if (mesh->triangle_count > SIZE_MAX / 3) {
+        return false;
+    }
+
+    const size_t candidate_count = mesh->triangle_count * 3;
+    Edge *edges = (Edge *)malloc(candidate_count * sizeof(Edge));
+    if (!edges) {
+        return false;
+    }
+
+    for (size_t i = 0; i < mesh->triangle_count; ++i) {
+        const Triangle triangle = mesh->triangles[i];
+        const size_t base = i * 3;
+
+        edges[base + 0] = make_edge(triangle.v1, triangle.v2);
+        edges[base + 1] = make_edge(triangle.v2, triangle.v3);
+        edges[base + 2] = make_edge(triangle.v3, triangle.v1);
+    }
+
+    qsort(edges, candidate_count, sizeof(*edges), compare_edges);
+
+    size_t unique_count = 0;
+    for (size_t i = 0; i < candidate_count; ++i) {
+        if (unique_count > 0 &&
+            compare_edges(&edges[unique_count - 1], &edges[i]) == 0) {
+            continue;
+        }
+
+        edges[unique_count++] = edges[i];
+    }
+
+    if (unique_count == 0) {
+        free(edges);
+        return true;
+    }
+
+    Edge *shrunk_edges = (Edge *)realloc(edges, unique_count * sizeof(*edges));
+    mesh->edges = shrunk_edges ? shrunk_edges : edges;
+    mesh->edge_count = unique_count;
+
+    return true;
+}
+
 void mesh_free(Mesh *mesh) {
     if (!mesh)
         return;
 
     free(mesh->vertices);
     free(mesh->triangles);
+    free(mesh->edges);
 
     mesh->vertices = NULL;
     mesh->triangles = NULL;
+    mesh->edges = NULL;
     mesh->vertex_count = 0;
     mesh->triangle_count = 0;
+    mesh->edge_count = 0;
 }
 
 bool fastobj_index_valid(const fastObjMesh *src, unsigned int p) {
@@ -115,6 +197,11 @@ bool convert_fastobj_to_mesh(const fastObjMesh *src, Mesh *dst) {
     dst->vertex_count = vertex_count;
     dst->triangles = triangles;
     dst->triangle_count = triangle_count;
+
+    if (!build_wireframe_edges(dst)) {
+        mesh_free(dst);
+        return false;
+    }
 
     return true;
 }
