@@ -62,6 +62,16 @@ bool texture_image_load(const char *path, TextureImage *texture) {
     texture->pixels = pixels;
     texture->width = converted->w;
     texture->height = converted->h;
+    texture->has_transparency = false;
+
+    for (size_t i = 0, count = (size_t)texture->width * (size_t)texture->height;
+         i < count; ++i) {
+        if (((texture->pixels[i] >> 24) & 0xFFu) < 255u) {
+            texture->has_transparency = true;
+            break;
+        }
+    }
+
     SDL_DestroySurface(converted);
     return true;
 }
@@ -84,6 +94,7 @@ bool texture_image_make_checker(TextureImage *texture, uint32_t a, uint32_t b) {
     texture->pixels[1] = b;
     texture->pixels[2] = b;
     texture->pixels[3] = a;
+    texture->has_transparency = false;
     return true;
 }
 
@@ -99,4 +110,5 @@ void texture_image_destroy(TextureImage *texture) {
     texture->pixels = NULL;
     texture->width = 0;
     texture->height = 0;
+    texture->has_transparency = false;
 }

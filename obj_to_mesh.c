@@ -1,5 +1,7 @@
 #include "obj_to_mesh.h"
 
+#include <math.h>
+
 static char *copy_string(const char *src) {
     if (!src) {
         return NULL;
@@ -121,6 +123,19 @@ bool fastobj_index_valid(const fastObjMesh *src, unsigned int p) { return p != 0
 
 bool fastobj_texcoord_index_valid(const fastObjMesh *src, unsigned int t) { return t != 0 && t <= src->texcoord_count; }
 
+static float wrap_uv(float value) {
+    if (value >= 0.0f && value <= 1.0f) {
+        return value;
+    }
+
+    value = value - floorf(value);
+    if (value < 0.0f) {
+        value += 1.0f;
+    }
+
+    return value;
+}
+
 bool convert_fastobj_to_mesh(const fastObjMesh *src, Mesh *dst) {
     if (!src || !dst) {
         return false;
@@ -137,6 +152,25 @@ bool convert_fastobj_to_mesh(const fastObjMesh *src, Mesh *dst) {
     }
 
     const size_t vertex_count = (size_t)src->index_count;
+    bool uses_top_left_wrapped_v = false;
+
+    if (src->texcoords && src->texcoord_count > 0) {
+        float min_v = src->texcoords[1];
+        float max_v = src->texcoords[1];
+
+        for (unsigned int i = 1; i < src->texcoord_count; ++i) {
+            const float v = src->texcoords[(size_t)i * 2 + 1];
+            if (v < min_v) {
+                min_v = v;
+            }
+            if (v > max_v) {
+                max_v = v;
+            }
+        }
+
+        uses_top_left_wrapped_v =
+            min_v >= 0.999f && max_v <= 2.001f;
+    }
 
     Vertex *vertices = (Vertex *)malloc(vertex_count * sizeof(Vertex));
     if (!vertices) {
@@ -159,8 +193,15 @@ bool convert_fastobj_to_mesh(const fastObjMesh *src, Mesh *dst) {
 
         if (fastobj_texcoord_index_valid(src, index.t)) {
             const size_t texcoord_base = (size_t)index.t * 2;
-            vertices[i].u = src->texcoords[texcoord_base + 0];
-            vertices[i].v = 1.0f - src->texcoords[texcoord_base + 1];
+            const float raw_u = src->texcoords[texcoord_base + 0];
+            const float raw_v = src->texcoords[texcoord_base + 1];
+
+            vertices[i].u = wrap_uv(raw_u);
+            if (uses_top_left_wrapped_v) {
+                vertices[i].v = wrap_uv(raw_v);
+            } else {
+                vertices[i].v = wrap_uv(1.0f - raw_v);
+            }
         }
     }
 

@@ -81,8 +81,29 @@ static const TextureImage *select_triangle_texture(const Mesh *mesh, const Textu
     return &textures[0];
 }
 
+static uint32_t blend_rgba32(uint32_t dst, uint32_t src) {
+    const uint32_t src_a = (src >> 24) & 0xFFu;
+    if (src_a >= 255u) {
+        return src;
+    }
+
+    const uint32_t inv_a = 255u - src_a;
+    const uint32_t src_r = src & 0xFFu;
+    const uint32_t src_g = (src >> 8) & 0xFFu;
+    const uint32_t src_b = (src >> 16) & 0xFFu;
+    const uint32_t dst_r = dst & 0xFFu;
+    const uint32_t dst_g = (dst >> 8) & 0xFFu;
+    const uint32_t dst_b = (dst >> 16) & 0xFFu;
+
+    const uint32_t out_r = ((src_r * src_a) + (dst_r * inv_a)) / 255u;
+    const uint32_t out_g = ((src_g * src_a) + (dst_g * inv_a)) / 255u;
+    const uint32_t out_b = ((src_b * src_a) + (dst_b * inv_a)) / 255u;
+
+    return 0xFF000000u | (out_b << 16) | (out_g << 8) | out_r;
+}
+
 static void rasterize_triangle(Framebuffer *framebuffer, const TextureImage *texture, ProjectedVertex a,
-                               ProjectedVertex b, ProjectedVertex c) {
+                               ProjectedVertex b, ProjectedVertex c, bool blend_alpha) {
     if (!texture || !texture->pixels || texture->width <= 0 || texture->height <= 0) {
         return;
     }
@@ -142,12 +163,18 @@ static void rasterize_triangle(Framebuffer *framebuffer, const TextureImage *tex
             tex_y = clamp_int(tex_y, 0, texture->height - 1);
 
             const uint32_t sample = texture->pixels[(size_t)tex_y * (size_t)texture->width + (size_t)tex_x];
-            if (((sample >> 24) & 0xFFu) == 0) {
+            const uint32_t sample_alpha = (sample >> 24) & 0xFFu;
+            if (sample_alpha == 0) {
                 continue;
             }
 
-            framebuffer->depth_buffer[pixel_index] = inv_z;
-            framebuffer->color_buffer[pixel_index] = sample;
+            if (blend_alpha) {
+                framebuffer->color_buffer[pixel_index] =
+                    blend_rgba32(framebuffer->color_buffer[pixel_index], sample);
+            } else {
+                framebuffer->depth_buffer[pixel_index] = inv_z;
+                framebuffer->color_buffer[pixel_index] = sample;
+            }
         }
     }
 }
@@ -211,34 +238,47 @@ bool draw_mesh_textured(SDL_Renderer *renderer, Framebuffer *framebuffer, const 
         projected->v_over_z = rotated.v * projected->inv_z;
     }
 
-    for (size_t i = 0; i < mesh->triangle_count; ++i) {
-        const Triangle triangle = mesh->triangles[i];
-        const ProjectedVertex a = projected_vertices[triangle.v1];
-        const ProjectedVertex b = projected_vertices[triangle.v2];
-        const ProjectedVertex c = projected_vertices[triangle.v3];
+    for (int pass = 0; pass < 2; ++pass) {
+        const bool transparent_pass = (pass == 1);
 
-        if (a.inv_z <= 0.0f || b.inv_z <= 0.0f || c.inv_z <= 0.0f) {
-            continue;
+        for (size_t i = 0; i < mesh->triangle_count; ++i) {
+            const Triangle triangle = mesh->triangles[i];
+            const ProjectedVertex a = projected_vertices[triangle.v1];
+            const ProjectedVertex b = projected_vertices[triangle.v2];
+            const ProjectedVertex c = projected_vertices[triangle.v3];
+            const TextureImage *texture =
+                select_triangle_texture(mesh, textures, texture_count, triangle);
+            const bool is_transparent = texture && texture->has_transparency;
+
+            if (is_transparent != transparent_pass) {
+                continue;
+            }
+
+            if (a.inv_z <= 0.0f || b.inv_z <= 0.0f || c.inv_z <= 0.0f) {
+                continue;
+            }
+
+            if (!is_transparent) {
+                const float ab_x = b.camera_x - a.camera_x;
+                const float ab_y = b.camera_y - a.camera_y;
+                const float ab_z = b.camera_z - a.camera_z;
+                const float ac_x = c.camera_x - a.camera_x;
+                const float ac_y = c.camera_y - a.camera_y;
+                const float ac_z = c.camera_z - a.camera_z;
+
+                const float normal_x = (ab_y * ac_z) - (ab_z * ac_y);
+                const float normal_y = (ab_z * ac_x) - (ab_x * ac_z);
+                const float normal_z = (ab_x * ac_y) - (ab_y * ac_x);
+                const float facing =
+                    (normal_x * a.camera_x) + (normal_y * a.camera_y) + (normal_z * a.camera_z);
+
+                if (facing >= 0.0f) {
+                    continue;
+                }
+            }
+
+            rasterize_triangle(framebuffer, texture, a, b, c, is_transparent);
         }
-
-        const float ab_x = b.camera_x - a.camera_x;
-        const float ab_y = b.camera_y - a.camera_y;
-        const float ab_z = b.camera_z - a.camera_z;
-        const float ac_x = c.camera_x - a.camera_x;
-        const float ac_y = c.camera_y - a.camera_y;
-        const float ac_z = c.camera_z - a.camera_z;
-
-        const float normal_x = (ab_y * ac_z) - (ab_z * ac_y);
-        const float normal_y = (ab_z * ac_x) - (ab_x * ac_z);
-        const float normal_z = (ab_x * ac_y) - (ab_y * ac_x);
-        const float facing = (normal_x * a.camera_x) + (normal_y * a.camera_y) + (normal_z * a.camera_z);
-
-        if (facing >= 0.0f) {
-            continue;
-        }
-
-        const TextureImage *texture = select_triangle_texture(mesh, textures, texture_count, triangle);
-        rasterize_triangle(framebuffer, texture, a, b, c);
     }
 
     if (!SDL_UpdateTexture(framebuffer->texture, NULL, framebuffer->color_buffer,

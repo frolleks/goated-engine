@@ -9,6 +9,7 @@ typedef struct {
     uint32_t *pixels;
     int width;
     int height;
+    bool has_transparency;
 } TextureImage;
 
 bool texture_image_load(const char *path, TextureImage *texture);
